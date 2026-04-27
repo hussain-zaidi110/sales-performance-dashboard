@@ -1,0 +1,45 @@
+WITH Cleaned_Data AS (
+    SELECT 
+        OrderDate,
+        Region,
+        Product,
+        SalesAmount,
+        Profit,
+        Quantity
+    FROM clean_sales_data
+    WHERE SalesAmount IS NOT NULL
+),
+
+Monthly_Data AS (
+    SELECT 
+        DATE_FORMAT(OrderDate, '%Y-%m') AS Month,
+        Region,
+        Product,
+        SUM(SalesAmount) AS Total_Sales,
+        SUM(Profit) AS Total_Profit,
+        SUM(Quantity) AS Total_Quantity
+    FROM Cleaned_Data
+    GROUP BY 
+        DATE_FORMAT(OrderDate, '%Y-%m'),
+        Region,
+        Product
+),
+
+Ranked_Data AS (
+    SELECT *,
+        RANK() OVER (PARTITION BY Region ORDER BY Total_Sales DESC) AS Sales_Rank
+    FROM Monthly_Data
+)
+
+SELECT 
+    Month,
+    Region,
+    Product,
+    Total_Sales,
+    Total_Profit,
+    Total_Quantity,
+    ROUND((Total_Profit / NULLIF(Total_Sales,0)) * 100, 2) AS Profit_Percentage,
+    Sales_Rank
+FROM Ranked_Data
+WHERE Sales_Rank <= 5
+ORDER BY Month, Region, Sales_Rank;
